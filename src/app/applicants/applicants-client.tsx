@@ -13,6 +13,7 @@ import ApplicantDetailsModal from "@/components/ui/applicant-details-modal";
 import Pagination from "@/components/ui/pagination";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 import LoadingScreen from "@/components/ui/loading-screen";
+import { DownloadApplicantReportButton } from "@/components/DownloadApplicantReportButton";
 import {
   getSolicitantes,
   createSolicitante,
@@ -299,6 +300,11 @@ export default function ApplicantsClient({ userRole }: ApplicantsClientProps) {
           >
             <span className="icon-[mdi--file-document-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
           </button>
+          <DownloadApplicantReportButton
+            applicantId={applicant.cedula_solicitante}
+            applicantName={`${applicant.nombres} ${applicant.apellidos}`}
+            iconOnly={true}
+          />
           <button
             onClick={() => handleEdit(applicant)}
             className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"

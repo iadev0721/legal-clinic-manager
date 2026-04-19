@@ -10,6 +10,7 @@ import {
 import { getSolicitanteCompleto } from "@/actions/solicitantes";
 import { getCasosBySolicitante } from "@/actions/casos";
 import { useRouter } from "next/navigation";
+import { DownloadApplicantReportButton } from "@/components/DownloadApplicantReportButton";
 
 interface ApplicantDetailsModalProps {
   open: boolean;
@@ -513,6 +514,12 @@ export default function ApplicantDetailsModal({
         ) : null}
 
         <div className="flex justify-end gap-3 pt-4 border-t">
+          {solicitante && (
+            <DownloadApplicantReportButton
+              applicantId={solicitante.cedula_solicitante}
+              applicantName={`${solicitante.nombres} ${solicitante.apellidos}`}
+            />
+          )}
           <button
             onClick={onClose}
             className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
