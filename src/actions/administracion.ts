@@ -1298,6 +1298,112 @@ export async function deleteLegalField(id: string) {
     }
 }
 
+// ============================================================================
+// BIENES
+// ============================================================================
+
+export interface Bien {
+    id: string; // id_bien
+    descripcion: string;
+}
+
+export async function getBienes() {
+    try {
+        const result = await query(`
+            SELECT id_bien::text as id, descripcion
+            FROM Bienes
+            ORDER BY descripcion
+        `);
+        return { success: true, data: result.rows };
+    } catch (error) {
+        console.error('Error al obtener bienes:', error);
+        return { success: false, error: 'Error al obtener bienes' };
+    }
+}
+
+export async function createBien(data: Partial<Bien>) {
+    try {
+        if (!data.descripcion || data.descripcion.trim() === '') {
+            return { success: false, error: 'La descripción del bien es requerida' };
+        }
+
+        const result = await query(`
+            INSERT INTO Bienes (descripcion)
+            VALUES ($1)
+            RETURNING id_bien, descripcion
+        `, [data.descripcion]);
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: result.rows[0].id_bien.toString(),
+                descripcion: result.rows[0].descripcion
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al crear bien:', error);
+        return { success: false, error: error.message || 'Error al crear bien' };
+    }
+}
+
+export async function updateBien(id: string, data: Partial<Bien>) {
+    try {
+        const idBien = parseInt(id);
+        if (isNaN(idBien)) {
+            return { success: false, error: 'ID de bien inválido' };
+        }
+
+        const result = await query(`
+            UPDATE Bienes
+            SET descripcion = $1
+            WHERE id_bien = $2
+            RETURNING id_bien, descripcion
+        `, [data.descripcion, idBien]);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Bien no encontrado' };
+        }
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: result.rows[0].id_bien.toString(),
+                descripcion: result.rows[0].descripcion
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al actualizar bien:', error);
+        return { success: false, error: error.message || 'Error al actualizar bien' };
+    }
+}
+
+export async function deleteBien(id: string) {
+    try {
+        const idBien = parseInt(id);
+        if (isNaN(idBien)) {
+            return { success: false, error: 'ID de bien inválido' };
+        }
+
+        // Verificar si el bien está siendo usado en la tabla Almacenan (solicitantes)
+        const checkUsage = await query('SELECT COUNT(*) as count FROM Almacenan WHERE id_bien = $1', [idBien]);
+        if (parseInt(checkUsage.rows[0].count) > 0) {
+            return { 
+                success: false, 
+                error: `No se puede eliminar el bien porque está asociado a ${checkUsage.rows[0].count} solicitante(s).` 
+            };
+        }
+
+        await query('DELETE FROM Bienes WHERE id_bien = $1', [idBien]);
+        revalidatePath('/administration');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error al eliminar bien:', error);
+        return { success: false, error: error.message || 'Error al eliminar bien' };
+    }
+}
+
 
 // ============================================================================
 // CARGA MASIVA

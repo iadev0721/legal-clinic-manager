@@ -16,6 +16,7 @@ import PrimaryButton from "./primary-button";
 import LocationCascadeSelect from "./location-cascade-select";
 import FilterSelect from "./filter-select";
 import LoadingScreen from "./loading-screen";
+import FormErrorAlert from "./form-error-alert";
 import {
   getNivelesEducativos,
   getTrabajos,
@@ -125,7 +126,13 @@ export default function ApplicantModal({
   const [loading, setLoading] = useState(false);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+
+  // Estados para secciones colapsables
+  const [showVivienda, setShowVivienda] = useState(false);
+  const [showFamilia, setShowFamilia] = useState(false);
+  const [showBienes, setShowBienes] = useState(false);
+
 
   // Catálogos
   const [nivelesEducativos, setNivelesEducativos] = useState<Catalog[]>([]);
@@ -198,6 +205,9 @@ export default function ApplicantModal({
         familia: (applicant as any).familia || undefined,
         bienes: (applicant as any).bienes?.map((b: any) => b.id_bien) || [],
       });
+      setShowVivienda(!!(applicant as any).vivienda);
+      setShowFamilia(!!(applicant as any).familia);
+      setShowBienes(((applicant as any).bienes?.length || 0) > 0);
     } else {
       setCedulaPrefix("V");
       setCedulaNumber("");
@@ -225,9 +235,12 @@ export default function ApplicantModal({
         familia: undefined,
         bienes: [],
       });
+      setShowVivienda(false);
+      setShowFamilia(false);
+      setShowBienes(false);
     }
     setErrors({});
-    setSubmitError(null);
+    setSubmitErrors([]);
   }, [applicant, mode, open]);
 
   const loadCatalogs = async () => {
@@ -284,64 +297,141 @@ export default function ApplicantModal({
 
   const validateForm = (data?: ApplicantFormData): boolean => {
     const dataToValidate = data || formData;
-    const newErrors: Partial<Record<keyof ApplicantFormData, string>> = {};
+    const newErrors: Partial<Record<string, string>> = {};
+    const validationErrors: string[] = [];
+
+    const fieldNames: Record<string, string> = {
+      nombres: "Nombres",
+      apellidos: "Apellidos",
+      cedula_solicitante: "Cédula",
+      fecha_nacimiento: "Fecha de Nacimiento",
+      id_parroquia: "Parroquia",
+      correo_electronico: "Correo Electrónico",
+      sexo: "Sexo",
+      estado_civil: "Estado Civil",
+      "vivienda.tipo_vivienda": "Tipo de Vivienda",
+      "vivienda.cantidad_habitaciones": "Cant. Habitaciones",
+      "vivienda.cantidad_banos": "Cant. Baños",
+      "vivienda.material_piso": "Material del Piso",
+      "vivienda.material_paredes": "Material de Paredes",
+      "vivienda.material_techo": "Material del Techo",
+      "vivienda.agua_potable": "Agua Potable",
+      "vivienda.eliminacion_aguas": "Eliminación de Aguas",
+      "vivienda.aseo_urbano": "Aseo Urbano",
+      "familia.cantidad_personas": "Cant. Personas",
+      "familia.ingreso_mensual_aprox": "Ingreso Mensual",
+    };
 
     if (!dataToValidate.nombres.trim()) {
       newErrors.nombres = "El nombre es requerido";
+      validationErrors.push(fieldNames.nombres);
     }
 
     if (!dataToValidate.apellidos.trim()) {
       newErrors.apellidos = "Los apellidos son requeridos";
+      validationErrors.push(fieldNames.apellidos);
     }
 
     // Validar cédula (prefijo + número) - permitir cualquier formato
     if (mode === "create") {
       if (!cedulaNumber.trim()) {
         newErrors.cedula_solicitante = "El número de cédula es requerido";
+        validationErrors.push(fieldNames.cedula_solicitante);
       }
     }
 
     if (!dataToValidate.fecha_nacimiento) {
       newErrors.fecha_nacimiento = "La fecha de nacimiento es requerida";
+      validationErrors.push(fieldNames.fecha_nacimiento);
     }
 
     if (!dataToValidate.id_parroquia || dataToValidate.id_parroquia === 0) {
       newErrors.id_parroquia = "Debe seleccionar una parroquia";
+      validationErrors.push(fieldNames.id_parroquia);
     }
 
-    if (
-      dataToValidate.correo_electronico &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dataToValidate.correo_electronico)
-    ) {
+    if (!dataToValidate.estado_civil) {
+      newErrors.estado_civil = "El estado civil es requerido";
+      validationErrors.push(fieldNames.estado_civil);
+    }
+
+    if (!dataToValidate.sexo) {
+      newErrors.sexo = "El sexo es requerido";
+      validationErrors.push(fieldNames.sexo);
+    }
+
+    if (!dataToValidate.correo_electronico || !dataToValidate.correo_electronico.trim()) {
+      newErrors.correo_electronico = "El correo electrónico es requerido";
+      validationErrors.push(fieldNames.correo_electronico);
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dataToValidate.correo_electronico)) {
       newErrors.correo_electronico = "Email inválido";
+      validationErrors.push("Email inválido");
     }
 
     // Teléfono celular es opcional, sin validación de formato
 
-    // Validar constraint de familia/hogar
-    if (dataToValidate.familia?.cantidad_personas) {
-      const cantidadPersonas = dataToValidate.familia.cantidad_personas;
-      const cantidadTrabajadores = dataToValidate.familia.cantidad_trabajadores || 0;
-      const cantidadNinos = dataToValidate.familia.cantidad_ninos || 0;
+    // Validar Vivienda si está desplegada
+    if (showVivienda) {
+      if (!dataToValidate.vivienda?.tipo_vivienda) { newErrors["vivienda.tipo_vivienda"] = "Requerido"; validationErrors.push(fieldNames["vivienda.tipo_vivienda"]); }
+      if (dataToValidate.vivienda?.cantidad_habitaciones === undefined) { newErrors["vivienda.cantidad_habitaciones"] = "Requerido"; validationErrors.push(fieldNames["vivienda.cantidad_habitaciones"]); }
+      if (dataToValidate.vivienda?.cantidad_banos === undefined) { newErrors["vivienda.cantidad_banos"] = "Requerido"; validationErrors.push(fieldNames["vivienda.cantidad_banos"]); }
+      if (!dataToValidate.vivienda?.material_piso) { newErrors["vivienda.material_piso"] = "Requerido"; validationErrors.push(fieldNames["vivienda.material_piso"]); }
+      if (!dataToValidate.vivienda?.material_paredes) { newErrors["vivienda.material_paredes"] = "Requerido"; validationErrors.push(fieldNames["vivienda.material_paredes"]); }
+      if (!dataToValidate.vivienda?.material_techo) { newErrors["vivienda.material_techo"] = "Requerido"; validationErrors.push(fieldNames["vivienda.material_techo"]); }
+      if (!dataToValidate.vivienda?.agua_potable) { newErrors["vivienda.agua_potable"] = "Requerido"; validationErrors.push(fieldNames["vivienda.agua_potable"]); }
+      if (!dataToValidate.vivienda?.eliminacion_aguas) { newErrors["vivienda.eliminacion_aguas"] = "Requerido"; validationErrors.push(fieldNames["vivienda.eliminacion_aguas"]); }
+      if (!dataToValidate.vivienda?.aseo_urbano) { newErrors["vivienda.aseo_urbano"] = "Requerido"; validationErrors.push(fieldNames["vivienda.aseo_urbano"]); }
+    }
 
-      if (cantidadTrabajadores + cantidadNinos > cantidadPersonas) {
-        // Agregar error visual en el campo de cantidad de personas
-        (newErrors as any).cantidad_personas =
-          `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
-          `no puede ser mayor que la cantidad de personas (${cantidadPersonas})`;
+    // Validar Familia si está desplegada
+    if (showFamilia) {
+      if (!dataToValidate.familia?.cantidad_personas) {
+        newErrors["familia.cantidad_personas"] = "Requerido";
+        validationErrors.push(fieldNames["familia.cantidad_personas"]);
+      }
+      if (!(dataToValidate.familia as any)?.ingreso_mensual_aprox) {
+        newErrors["familia.ingreso_mensual_aprox"] = "Requerido";
+        validationErrors.push(fieldNames["familia.ingreso_mensual_aprox"]);
+      }
+
+      // Validar constraint de familia/hogar
+      if (dataToValidate.familia?.cantidad_personas) {
+        const cantidadPersonas = dataToValidate.familia.cantidad_personas;
+        const cantidadTrabajadores = dataToValidate.familia.cantidad_trabajadores || 0;
+        const cantidadNinos = dataToValidate.familia.cantidad_ninos || 0;
+
+        if (cantidadTrabajadores + cantidadNinos > cantidadPersonas) {
+          // Agregar error visual en el campo de cantidad de personas
+          newErrors["familia.cantidad_personas"] =
+            `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
+            `no puede ser mayor que la cantidad de personas (${cantidadPersonas})`;
+          validationErrors.push("Suma de trabajadores y niños excede cantidad de personas");
+        }
       }
     }
 
     setErrors(newErrors);
+
+    if (validationErrors.length > 0) {
+      // Eliminar duplicados si los hay
+      const uniqueErrors = Array.from(new Set(validationErrors));
+      setSubmitErrors(uniqueErrors);
+    } else {
+      setSubmitErrors([]);
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitError(null);
+    setSubmitErrors([]);
 
     // Preparar datos para enviar
     const dataToSave: ApplicantFormData = { ...formData };
+    if (!showVivienda) delete dataToSave.vivienda;
+    if (!showFamilia) delete dataToSave.familia;
+    if (!showBienes) dataToSave.bienes = [];
 
     // Concatenar prefijo y número de cédula antes de validar
     if (mode === "create") {
@@ -362,7 +452,7 @@ export default function ApplicantModal({
       onClose();
     } catch (error: any) {
       console.error("Error saving applicant:", error);
-      setSubmitError(error.message || "Error al guardar el solicitante");
+      setSubmitErrors([error.message || "Error al guardar el solicitante"]);
     } finally {
       setLoading(false);
     }
@@ -377,7 +467,7 @@ export default function ApplicantModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent data-testid="applicant-dialog" className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-sky-950 text-3xl font-semibold">
             {mode === "create" ? "Nuevo Solicitante" : "Editar Solicitante"}
@@ -396,27 +486,12 @@ export default function ApplicantModal({
           />
         ) : (
           <>
-            {submitError && (
-              <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <span className="icon-[mdi--alert-circle] text-2xl text-red-500 flex-shrink-0 mt-0.5"></span>
-                  <div className="flex-1">
-                    <h4 className="text-red-800 font-semibold mb-1">Error al guardar</h4>
-                    <p className="text-red-700 text-sm">{submitError}</p>
-                  </div>
-                  <button
-                    onClick={() => setSubmitError(null)}
-                    className="text-red-500 hover:text-red-700 flex-shrink-0"
-                    type="button"
-                  >
-                    <span className="icon-[mdi--close] text-xl"></span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             <div className="max-h-[calc(90vh-200px)] overflow-y-auto pr-2 custom-scrollbar">
               <form id="applicant-form" onSubmit={handleSubmit} className="space-y-6">
+                <FormErrorAlert 
+                  errors={submitErrors} 
+                  onClose={() => setSubmitErrors([])} 
+                />
                 {/* Sección 1: Datos Personales */}
                 <div className="space-y-4">
                   <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
@@ -551,7 +626,9 @@ export default function ApplicantModal({
                         </p>
                       )}
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Estado Civil */}
                     <div className="space-y-2">
                       <Label htmlFor="estado_civil" className="text-sky-950 font-semibold">
@@ -568,12 +645,16 @@ export default function ApplicantModal({
                           }
                         }}
                         options={[
-                          { value: "Soltero", label: "Soltero(a)" },
-                          { value: "Casado", label: "Casado(a)" },
-                          { value: "Divorciado", label: "Divorciado(a)" },
-                          { value: "Viudo", label: "Viudo(a)" },
+                          { value: "Soltero", label: "Soltero/a" },
+                          { value: "Casado", label: "Casado/a" },
+                          { value: "Divorciado", label: "Divorciado/a" },
+                          { value: "Viudo", label: "Viudo/a" },
                         ]}
+                        className={errors.estado_civil ? "border-red-500" : ""}
                       />
+                      {errors.estado_civil && (
+                        <p className="text-red-500 text-sm">{errors.estado_civil}</p>
+                      )}
                     </div>
 
                     {/* En Concubinato */}
@@ -850,13 +931,20 @@ export default function ApplicantModal({
                 </div>
 
                 {/* Sección 5: Información de Vivienda */}
-                <div className="space-y-4">
-                  <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
-                    Información de Vivienda
-                  </h3>
+                <div className="space-y-4 border rounded-xl p-4 bg-gray-50/50">
+                  <div
+                    className="flex justify-between items-center cursor-pointer select-none"
+                    onClick={() => setShowVivienda(!showVivienda)}
+                  >
+                    <h3 className="text-sky-950 text-xl font-semibold">
+                      Información de Vivienda <span className="text-sm font-normal text-gray-500 ml-2">(Opcional si no se completa)</span>
+                    </h3>
+                    <span className={`icon-[mdi--chevron-down] text-2xl transition-transform duration-300 ${showVivienda ? 'rotate-180' : ''}`}></span>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Tipo de Vivienda */}
+                  {showVivienda && (
+                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {/* Tipo de Vivienda */}
                     <div className="space-y-2">
                       <Label htmlFor="tipo_vivienda" className="text-sky-950 font-semibold">
                         Tipo de Vivienda
@@ -1051,22 +1139,28 @@ export default function ApplicantModal({
                         }
                         options={[
                           { value: "Llega a la vivienda", label: "Llega a la vivienda" },
-                          { value: "No llega / Container", label: "No llega / Container" },
-                          { value: "No tiene", label: "No tiene" },
                         ]}
                       />
                     </div>
                   </div>
+                  )}
                 </div>
 
                 {/* Sección 6: Información de Familia/Hogar */}
-                <div className="space-y-4">
-                  <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
-                    Información de Familia/Hogar
-                  </h3>
+                <div className="space-y-4 border rounded-xl p-4 bg-gray-50/50">
+                  <div
+                    className="flex justify-between items-center cursor-pointer select-none"
+                    onClick={() => setShowFamilia(!showFamilia)}
+                  >
+                    <h3 className="text-sky-950 text-xl font-semibold">
+                      Información de Familia/Hogar <span className="text-sm font-normal text-gray-500 ml-2">(Opcional si no se completa)</span>
+                    </h3>
+                    <span className={`icon-[mdi--chevron-down] text-2xl transition-transform duration-300 ${showFamilia ? 'rotate-180' : ''}`}></span>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Cantidad de Personas */}
+                  {showFamilia && (
+                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {/* Cantidad de Personas */}
                     <div className="space-y-2">
                       <Label htmlFor="cantidad_personas" className="text-sky-950 font-semibold">
                         Cantidad de Personas <span className="text-red-500">*</span>
@@ -1250,16 +1344,24 @@ export default function ApplicantModal({
                       </label>
                     </div>
                   </div>
+                  )}
                 </div>
 
                 {/* Sección 7: Bienes del Solicitante */}
-                <div className="space-y-4">
-                  <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
-                    Bienes del Solicitante
-                  </h3>
+                <div className="space-y-4 border rounded-xl p-4 bg-gray-50/50 mb-6">
+                  <div
+                    className="flex justify-between items-center cursor-pointer select-none"
+                    onClick={() => setShowBienes(!showBienes)}
+                  >
+                    <h3 className="text-sky-950 text-xl font-semibold">
+                      Bienes del Solicitante <span className="text-sm font-normal text-gray-500 ml-2">(Opcional)</span>
+                    </h3>
+                    <span className={`icon-[mdi--chevron-down] text-2xl transition-transform duration-300 ${showBienes ? 'rotate-180' : ''}`}></span>
+                  </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sky-950 font-semibold">
+                  {showBienes && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label className="text-sky-950 font-semibold">
                       Seleccione los bienes que posee
                     </Label>
                     <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border rounded-lg">
@@ -1286,9 +1388,10 @@ export default function ApplicantModal({
                           />
                           <span className="text-sky-950">{bien.label}</span>
                         </label>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </form>
             </div>
@@ -1303,6 +1406,7 @@ export default function ApplicantModal({
                 Cancelar
               </button>
               <PrimaryButton
+                data-testid="save-applicant"
                 type="submit"
                 form="applicant-form"
                 icon={

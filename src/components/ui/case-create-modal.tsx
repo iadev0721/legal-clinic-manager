@@ -30,6 +30,7 @@ import {
 import { getSolicitantes, getSolicitanteCompleto } from "@/actions/solicitantes";
 import { getSemestres } from "@/actions/administracion";
 import CloudinaryUploadButton from "./cloudinary-upload-button";
+import FormErrorAlert from "./form-error-alert";
 
 interface CaseCreateModalProps {
   open: boolean;
@@ -54,7 +55,7 @@ export default function CaseCreateModal({
   onSuccess,
 }: CaseCreateModalProps) {
   const [loading, setLoading] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
   // Catálogos
@@ -344,66 +345,92 @@ export default function CaseCreateModal({
     ]);
     setSoportes([]);
     setErrors({});
-    setSubmitError(null);
+    setSubmitErrors([]);
     // Resetear term e idEstatus se hará después de cargar los catálogos
   };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+    const validationErrors: string[] = [];
+
+    const fieldNames: Record<string, string> = {
+      cedulaSolicitante: "Solicitante",
+      legalHierarchy: "Jerarquía Legal",
+      idTramite: "Trámite",
+      idNucleo: "Núcleo",
+      term: "Semestre",
+      idEstatus: "Estatus",
+      cedulaAlumno: "Alumno(s)",
+      cedulaProfesor: "Profesor",
+    };
 
     if (!cedulaSolicitante) {
       newErrors.cedulaSolicitante = "Debe seleccionar un solicitante";
+      validationErrors.push(fieldNames.cedulaSolicitante);
     }
 
     if (!legalHierarchy) {
       newErrors.legalHierarchy = "Debe completar la jerarquía legal";
+      validationErrors.push(fieldNames.legalHierarchy);
     }
 
     if (!idTramite) {
       newErrors.idTramite = "Debe seleccionar un trámite";
+      validationErrors.push(fieldNames.idTramite);
     }
 
     if (!idNucleo) {
       newErrors.idNucleo = "Debe seleccionar un núcleo";
+      validationErrors.push(fieldNames.idNucleo);
     }
 
     if (!term) {
       newErrors.term = "Debe seleccionar un semestre";
+      validationErrors.push(fieldNames.term);
     }
 
     if (!idEstatus) {
       newErrors.idEstatus = "Debe seleccionar un estatus";
+      validationErrors.push(fieldNames.idEstatus);
     }
 
     // Validar beneficiarios
     beneficiarios.forEach((ben, index) => {
+      const benLabel = `Beneficiario ${index + 1}`;
       if (!ben.cedula_beneficiario.trim()) {
-        newErrors[`beneficiario_${index}_cedula`] =
-          "La cédula del beneficiario es requerida";
+        newErrors[`beneficiario_${index}_cedula`] = "La cédula del beneficiario es requerida";
+        validationErrors.push(`Cédula de ${benLabel}`);
       }
       if (!ben.tipo_beneficiario) {
-        newErrors[`beneficiario_${index}_tipo`] =
-          "Debe seleccionar el tipo de beneficiario";
-      }
-      if (ben.tipo_beneficiario === "Indirecto" && !ben.parentesco.trim()) {
-        newErrors[`beneficiario_${index}_parentesco`] =
-          "El parentesco es requerido"; // Mensaje genérico, aunque el de arriba era específico
+        newErrors[`beneficiario_${index}_tipo`] = "Debe seleccionar el tipo de beneficiario";
+        validationErrors.push(`Tipo de ${benLabel}`);
       }
       // Nueva validación general ya que ahora es requerido siempre (S/N)
       if (!ben.parentesco.trim()) {
         newErrors[`beneficiario_${index}_parentesco`] = "Debe indicar si hay parentesco (S/N)";
+        validationErrors.push(`Parentesco de ${benLabel}`);
       }
     });
 
     // Validar asignación si está activa
     if (asignarAlumno && alumnosSeleccionados.length === 0) {
       newErrors.cedulaAlumno = "Debe seleccionar al menos un alumno";
+      validationErrors.push(fieldNames.cedulaAlumno);
     }
     if (asignarProfesor && !cedulaProfesor) {
       newErrors.cedulaProfesor = "Debe seleccionar un profesor";
+      validationErrors.push(fieldNames.cedulaProfesor);
     }
 
     setErrors(newErrors);
+
+    if (validationErrors.length > 0) {
+      const uniqueErrors = Array.from(new Set(validationErrors));
+      setSubmitErrors(uniqueErrors);
+    } else {
+      setSubmitErrors([]);
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -500,7 +527,7 @@ export default function CaseCreateModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitError(null);
+    setSubmitErrors([]);
 
     if (!validateForm()) {
       return;
@@ -562,11 +589,11 @@ export default function CaseCreateModal({
         onSuccess?.();
         onClose();
       } else {
-        setSubmitError(result.error || "Error al crear el caso");
+        setSubmitErrors([result.error || "Error al crear el caso"]);
       }
     } catch (error: any) {
       console.error("Error creating case:", error);
-      setSubmitError(error.message || "Error al crear el caso");
+      setSubmitErrors([error.message || "Error al crear el caso"]);
     } finally {
       setLoading(false);
     }
@@ -574,7 +601,7 @@ export default function CaseCreateModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent data-testid="case-create-dialog" className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sky-950 text-3xl font-semibold flex items-center gap-3">
             <span className="icon-[mdi--plus-circle] text-4xl text-green-600"></span>
@@ -586,12 +613,14 @@ export default function CaseCreateModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <FormErrorAlert errors={submitErrors} onClose={() => setSubmitErrors([])} />
           {/* Solicitante */}
           <div className="space-y-2">
             <Label htmlFor="solicitante" className="text-sky-950 font-semibold text-lg">
               Solicitante <span className="text-red-500">*</span>
             </Label>
             <SolicitanteSearchSelect
+              data-testid="case-solicitante-search"
               placeholder="Buscar por cédula o nombre..."
               value={cedulaSolicitante}
               onChange={setCedulaSolicitante}
@@ -652,6 +681,7 @@ export default function CaseCreateModal({
               Síntesis del Caso <span className="text-red-500">*</span>
             </Label>
             <Textarea
+              data-testid="case-sintesis"
               id="sintesis"
               value={sintesis}
               onChange={(e) => setSintesis(e.target.value)}
@@ -1153,12 +1183,6 @@ export default function CaseCreateModal({
           </div>
 
           {/* Error general */}
-          {submitError && (
-            <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4">
-              <p className="text-red-800 font-semibold">{submitError}</p>
-            </div>
-          )}
-
           <DialogFooter className="gap-2 pt-4">
             <button
               type="button"
@@ -1169,6 +1193,7 @@ export default function CaseCreateModal({
               Cancelar
             </button>
             <PrimaryButton
+              data-testid="case-save"
               type="submit"
               icon="icon-[mdi--content-save]"
               disabled={loading}

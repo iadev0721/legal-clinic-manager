@@ -123,7 +123,7 @@ export function CustomTable<T extends Record<string, any>>({
                             <TableRow
                                 key={itemId || rowIndex}
                                 className={cn(
-                                    "border-b border-sky-950/20 hover:bg-neutral-100 last:border-b-0 transition-colors",
+                                    "border-b border-sky-950/20 hover:bg-neutral-100 transition-colors",
                                     isSelected && "bg-blue-50"
                                 )}
                             >
@@ -148,7 +148,7 @@ export function CustomTable<T extends Record<string, any>>({
                                     <TableCell
                                         key={colIndex}
                                         className={cn(
-                                            "text-sky-950 text-lg border-r border-sky-950/20 py-4 align-middle last:border-r-0 break-words",
+                                            "text-sky-950 text-lg border-r border-sky-950/20 py-4 align-middle break-words",
                                             col.className
                                         )}
                                     >
@@ -164,14 +164,14 @@ export function CustomTable<T extends Record<string, any>>({
                     })}
                     {/* Empty Rows Filler */}
                     {Array.from({ length: Math.max(0, (minRows || 0) - data.length) }).map((_, index) => (
-                        <TableRow key={`empty-${index}`} className="border-b border-sky-950/20 last:border-b-0 hover:bg-transparent">
+                        <TableRow key={`empty-${index}`} className="border-b border-sky-950/20 hover:bg-transparent">
                             {enableSelection && (
                                 <TableCell className="py-4 border-r border-sky-950/20" />
                             )}
                             {columns.map((_, colIndex) => (
                                 <TableCell
                                     key={`empty-col-${colIndex}`}
-                                    className="py-4 border-r border-sky-950/20 last:border-r-0"
+                                    className="py-4 border-r border-sky-950/20"
                                 >
                                     &nbsp;
                                 </TableCell>

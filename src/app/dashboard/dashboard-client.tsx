@@ -734,7 +734,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                                         data={recentAccessData}
                                         columns={recentAccessColumns}
                                         className="h-full"
-                                        minRows={5}
+                                        minRows={12}
                                     />
                                 </div>
                             </div>

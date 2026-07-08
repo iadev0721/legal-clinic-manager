@@ -37,10 +37,10 @@ export const createReportDocument = ({ images, date, titles }: ReportDocxDocumen
             properties: {
                 page: {
                     margin: {
-                        top: 720,
-                        right: 720,
-                        bottom: 720,
-                        left: 720,
+                        top: 200,
+                        right: 200,
+                        bottom: 200,
+                        left: 200,
                     },
                 },
             },
@@ -63,8 +63,8 @@ export const createReportDocument = ({ images, date, titles }: ReportDocxDocumen
                         new ImageRun({
                             data: base64ToBuffer(image),
                             transformation: {
-                                width: 550,
-                                height: 750,
+                                width: 720,
+                                height: 926,
                             },
                             type: "png",
                         }),

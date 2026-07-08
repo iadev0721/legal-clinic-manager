@@ -505,7 +505,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
         </div>
         <div className="flex gap-4">
           {(userRole === "ADMIN" || userRole === "PROFESSOR") && (
-            <PrimaryButton onClick={handleNewCase} icon="icon-[mdi--plus]">
+            <PrimaryButton data-testid="case-create-btn" onClick={handleNewCase} icon="icon-[mdi--plus]">
               Crear Nuevo Caso
             </PrimaryButton>
           )}

@@ -28,6 +28,7 @@ import SolicitanteSearchSelect from "./solicitante-search-select";
 import PrimaryButton from "./primary-button";
 import LegalHierarchySelect from "./legal-hierarchy-select";
 import CloudinaryUploadButton from "./cloudinary-upload-button";
+import FormErrorAlert from "./form-error-alert";
 import {
   getCasoById,
   getAlumnosDisponibles,
@@ -141,7 +142,7 @@ export default function CaseEditModal({
 }: CaseEditModalProps) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"expediente" | "gestion">("expediente");
 
   // Estados para datos del caso
@@ -325,7 +326,30 @@ export default function CaseEditModal({
     e.preventDefault();
     if (!caseData?.id) return;
     setLoading(true);
-    setSubmitError(null);
+    setSubmitErrors([]);
+
+    const validationErrors: string[] = [];
+    const fieldNames: Record<string, string> = {
+      cedulaSolicitante: "Solicitante",
+      idNucleo: "Núcleo",
+      idTramite: "Trámite",
+      sintesis: "Síntesis del caso",
+      fechaInicio: "Fecha de inicio"
+    };
+
+    if (!cedulaSolicitante) validationErrors.push(fieldNames.cedulaSolicitante);
+    if (!idNucleo) validationErrors.push(fieldNames.idNucleo);
+    if (!idTramite) validationErrors.push(fieldNames.idTramite);
+    if (!sintesis || sintesis.trim() === "") validationErrors.push(fieldNames.sintesis);
+    if (!fechaInicio) validationErrors.push(fieldNames.fechaInicio);
+    if (!legalHierarchy || !legalHierarchy.id_materia) validationErrors.push("Jerarquía Legal (Materia)");
+
+    if (validationErrors.length > 0) {
+      const uniqueErrors = Array.from(new Set(validationErrors));
+      setSubmitErrors(uniqueErrors);
+      setLoading(false);
+      return;
+    }
 
     try {
       // 1. Actualizar datos básicos
@@ -400,7 +424,7 @@ export default function CaseEditModal({
       });
       onClose();
     } catch (error: any) {
-      setSubmitError(error.message || "Error al actualizar el caso");
+      setSubmitErrors([error.message || "Error al actualizar el caso"]);
     } finally {
       setLoading(false);
     }
@@ -587,19 +611,7 @@ export default function CaseEditModal({
             {renderContextAlert(activeTab)}
 
             {/* ERROR DISPLAY */}
-            {submitError && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <span className="icon-[mdi--alert-circle] text-red-500 text-xl"></span>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-red-700 font-medium">Error al guardar:</p>
-                    <p className="text-sm text-red-600">{submitError}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <FormErrorAlert errors={submitErrors} onClose={() => setSubmitErrors([])} />
 
             {/* TAB CONTENT: EXPEDIENTE */}
             <div className={activeTab === "expediente" ? "space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300" : "hidden"}>

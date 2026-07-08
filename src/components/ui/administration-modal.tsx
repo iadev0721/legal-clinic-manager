@@ -14,6 +14,7 @@ import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
 import PrimaryButton from "./primary-button";
 import { cn } from "@/lib/utils";
+import FormErrorAlert from "./form-error-alert";
 
 interface AdministrationModalProps {
     open: boolean;
@@ -21,7 +22,7 @@ interface AdministrationModalProps {
     onSave: (data: any) => Promise<void> | void;
     item?: any;
     mode: "create" | "edit";
-    type: "users" | "centers" | "semestres" | "materias" | "categorias" | "subcategorias" | "ambitos";
+    type: "users" | "centers" | "semestres" | "materias" | "categorias" | "subcategorias" | "ambitos" | "bienes";
     parishes?: { id: string; nombre: string }[];
     participations?: any[];
     materias?: { id: string; nombre: string }[];
@@ -112,7 +113,7 @@ export default function AdministrationModal({
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [submitErrors, setSubmitErrors] = useState<string[]>([]);
     const [isExistingUser, setIsExistingUser] = useState(false);
 
     // Filter states
@@ -122,7 +123,7 @@ export default function AdministrationModal({
     // Initial State Setup
     useEffect(() => {
         if (open) {
-            setError(null);
+            setSubmitErrors([]);
             setIsExistingUser(false);
             if (item && mode === "edit") {
                 setFormData({
@@ -259,73 +260,87 @@ export default function AdministrationModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
+        setSubmitErrors([]);
 
-        // Validation - Removed confirm matches
-        if (type === "users" && mode === "create") {
-            if (!isExistingUser && formData.password && formData.password.length < 6) {
-                setError("La contraseña debe tener al menos 6 caracteres");
-                return;
-            }
-            // For Students/Professors, semester and type are required
+        const errors: string[] = [];
+        const fieldNames: Record<string, string> = {
+            cedulaNumber: "Cédula",
+            nombres: "Nombres",
+            apellidos: "Apellidos",
+            correo: "Correo",
+            role: "Rol",
+            term: "Semestre/Término",
+            fecha_inicio: "Fecha de Inicio",
+            fecha_final: "Fecha Final",
+            nombre: "Nombre",
+            materiaId: "Materia/Área",
+            categorylegalfieldid: "Categoría",
+            longid: "Subcategoría",
+            parishId: "Parroquia",
+            tipoParticipacion: "Tipo de Participación"
+        };
+
+        if (type === "users") {
+            if (!formData.cedulaNumber || formData.cedulaNumber.trim() === "") errors.push(fieldNames.cedulaNumber);
+            if (!formData.nombres || formData.nombres.trim() === "") errors.push(fieldNames.nombres);
+            if (!formData.apellidos || formData.apellidos.trim() === "") errors.push(fieldNames.apellidos);
+            if (!formData.correo || formData.correo.trim() === "") errors.push(fieldNames.correo);
+            
             if (isStudentOrTeacher && (!formData.term || !formData.tipoParticipacion)) {
-                setError("Debe indicar el semestre y tipo de participación");
-                return;
+                if (!formData.term) errors.push(fieldNames.term);
+                if (!formData.tipoParticipacion) errors.push(fieldNames.tipoParticipacion);
+            }
+            if (mode === "create" && !isExistingUser && formData.password && formData.password.length < 6) {
+                errors.push("La contraseña debe tener al menos 6 caracteres");
+            }
+            if (mode === "edit" && formData.password && formData.password.length < 6) {
+                errors.push("La contraseña debe tener al menos 6 caracteres");
             }
         }
 
-        if (type === "users" && mode === "edit" && formData.password) {
-            if (formData.password.length < 6) {
-                setError("La contraseña debe tener al menos 6 caracteres");
-                return;
-            }
-        }
-
-        // Validaciones específicas movidas a la construcción de finalData
-
-        // Validación para núcleos
         if (type === "centers" && mode === "create") {
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                return;
-            }
+            if (!formData.nombre || formData.nombre.trim() === "") errors.push(fieldNames.nombre);
         }
 
-        // Validación para núcleos
-        if (type === "centers" && mode === "create") {
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                return;
-            }
-        }
-
-        // Validación para semestres
         if (type === "semestres") {
             if (!formData.term || formData.term.trim() === "") {
-                setError("El término del semestre es requerido (ej: 2025-15)");
-                return;
+                errors.push(fieldNames.term);
+            } else {
+                const termPattern = /^\d{4}-\d{2}$/;
+                if (!termPattern.test(formData.term)) errors.push("Formato de término inválido (YYYY-NN)");
             }
-            // Validar formato YYYY-NN
-            const termPattern = /^\d{4}-\d{2}$/;
-            if (!termPattern.test(formData.term)) {
-                setError("El formato del término debe ser YYYY-NN (ej: 2025-15)");
-                return;
+            if (!formData.fecha_inicio) errors.push(fieldNames.fecha_inicio);
+            if (!formData.fecha_final) errors.push(fieldNames.fecha_final);
+            
+            if (formData.fecha_inicio && formData.fecha_final) {
+                const fechaInicio = new Date(formData.fecha_inicio);
+                const fechaFinal = new Date(formData.fecha_final);
+                if (fechaFinal <= fechaInicio) errors.push("La fecha final debe ser posterior a la inicial");
             }
-            if (!formData.fecha_inicio) {
-                setError("La fecha de inicio es requerida");
-                return;
-            }
-            if (!formData.fecha_final) {
-                setError("La fecha final es requerida");
-                return;
-            }
-            // Validar que fecha_final > fecha_inicio
-            const fechaInicio = new Date(formData.fecha_inicio);
-            const fechaFinal = new Date(formData.fecha_final);
-            if (fechaFinal <= fechaInicio) {
-                setError("La fecha final debe ser posterior a la fecha de inicio");
-                return;
-            }
+        }
+
+        if (type === "materias" || type === "categorias" || type === "subcategorias" || type === "ambitos") {
+            if (!formData.nombre || formData.nombre.trim() === "") errors.push(fieldNames.nombre);
+            
+            if (type === "categorias" && !formData.materiaId) errors.push(fieldNames.materiaId);
+            if (type === "subcategorias" && !formData.categorylegalfieldid) errors.push(fieldNames.categorylegalfieldid);
+            if (type === "ambitos" && !formData.longid) errors.push(fieldNames.longid);
+        }
+
+        switch (type) {
+            case "ambitos":
+                if (!formData.nombre?.trim()) errors.push("El nombre del ámbito legal es requerido");
+                if (!formData.longid) errors.push("El ID de la subcategoría es requerido");
+                break;
+            case "bienes":
+                if (!formData.descripcion?.trim()) errors.push("La descripción del bien es requerida");
+                break;
+        }
+
+        if (errors.length > 0) {
+            const uniqueErrors = Array.from(new Set(errors));
+            setSubmitErrors(uniqueErrors);
+            return;
         }
 
         setLoading(true);
@@ -335,53 +350,13 @@ export default function AdministrationModal({
             finalData.id = `${formData.cedulaPrefix}-${formData.cedulaNumber}`;
             finalData.user = `${formData.nombres} ${formData.apellidos}`;
         }
-        if (type === "materias") {
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                setLoading(false);
-                return;
-            }
-        }
-
+        
         if (type === "categorias") {
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                setLoading(false);
-                return;
-            }
-            if (!formData.materiaId) {
-                setError("Debe seleccionar una materia");
-                setLoading(false);
-                return;
-            }
-            // Prepare data for createCategoria/updateCategoria
-            finalData.materiaid = formData.materiaId; // API expects materiaid
+            finalData.materiaid = formData.materiaId;
         }
 
         if (type === "subcategorias") {
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                setLoading(false);
-                return;
-            }
-            if (!formData.categorylegalfieldid) {
-                setError("Debe seleccionar una categoría");
-                setLoading(false);
-                return;
-            }
-        }
-
-        if (type === "ambitos") {
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                setLoading(false);
-                return;
-            }
-            if (!formData.longid) {
-                setError("Debe seleccionar una subcategoría");
-                setLoading(false);
-                return;
-            }
+            // Already validated categorylegalfieldid
         }
 
         if (type === "centers" && formData.parishId) {
@@ -399,7 +374,7 @@ export default function AdministrationModal({
             onClose();
         } catch (err: any) {
             setLoading(false);
-            setError(err.message || "Error al guardar");
+            setSubmitErrors([err.message || "Error al guardar"]);
             // El modal permanece abierto para que el usuario corrija
         }
     };
@@ -408,7 +383,7 @@ export default function AdministrationModal({
         // Normalizar el valor a string para consistencia
         const normalizedValue = String(value);
         setFormData((prev: any) => ({ ...prev, [field]: normalizedValue }));
-        if (error) setError(null);
+        if (submitErrors.length > 0) setSubmitErrors([]);
     };
 
     const getTitle = () => {
@@ -422,6 +397,7 @@ export default function AdministrationModal({
             case "categorias": entity = "Categoría"; break;
             case "subcategorias": entity = "Subcategoría"; break;
             case "ambitos": entity = "Ámbito Legal"; break;
+            case "bienes": entity = "Bien"; break;
         }
         return `${action} ${entity}`;
     };
@@ -440,11 +416,7 @@ export default function AdministrationModal({
 
                 <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-4 px-1 pb-4">
                     <form id="admin-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
-                        {error && (
-                            <div className="bg-red-100 text-red-600 p-3 rounded-lg text-sm font-semibold">
-                                {error}
-                            </div>
-                        )}
+                        <FormErrorAlert errors={submitErrors} onClose={() => setSubmitErrors([])} />
 
                         {type === "users" ? (
                             <div className="space-y-6">

@@ -11,7 +11,8 @@ import {
     getMaterias, createMateria, updateMateria, deleteMateria,
     getCategorias, createCategoria, updateCategoria, deleteCategoria,
     getSubCategorias, createSubCategoria, updateSubCategoria, deleteSubCategoria,
-    getLegalField, createLegalField, updateLegalField, deleteLegalField
+    getLegalField, createLegalField, updateLegalField, deleteLegalField,
+    getBienes, createBien, updateBien, deleteBien
 } from "@/actions/administracion";
 import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/solicitantes";
 import Pagination from "@/components/ui/pagination";
@@ -35,6 +36,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     const [categorias, setCategorias] = useState<any[]>([]);
     const [subcategorias, setSubcategorias] = useState<any[]>([]);
     const [ambitoslegales, setAmbitoslegales] = useState<any[]>([]);
+    const [assets, setAssets] = useState<any[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -109,6 +111,12 @@ export default function Administration({ currentUser }: { currentUser: any }) {
 
             const legalfieldRes = await getLegalField();
             if (legalfieldRes.success) setAmbitoslegales(legalfieldRes.data || []);
+
+            // Cargar bienes
+            const bienesRes = await getBienes();
+            if (bienesRes.success) {
+                setAssets(bienesRes.data || []);
+            }
         } catch (err: any) {
             setError(err.message || 'Error al cargar datos');
             console.error('Error al cargar datos:', err);
@@ -136,7 +144,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     }, [filtroEstado]);
 
     // Active tab state
-    const [activeTab, setActiveTab] = useState<"users" | "centers" | "semestres" | "materias">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "centers" | "semestres" | "materias" | "bienes">("users");
 
     // Limpiar selección cuando cambia la pestaña activa
     useEffect(() => {
@@ -316,6 +324,14 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al crear ámbito legal');
                     }
+                } else if (modalType === "bienes") {
+                    const result = await createBien(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear bien');
+                    }
                 }
             } else {
                 // Edit mode
@@ -376,6 +392,14 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al actualizar ámbito legal');
                     }
+                } else if (modalType === "bienes") {
+                    const result = await updateBien(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar bien');
+                    }
                 }
             }
         } catch (err: any) {
@@ -396,6 +420,8 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                         await deleteNucleo(item.id);
                     } else if (activeTab === "semestres") {
                         await deleteSemestre(item.id);
+                    } else if (activeTab === "bienes") {
+                        await deleteBien(item.id);
                     }
                 }
                 setSelectedItems([]);
@@ -448,6 +474,12 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     const result = await deleteLegalField(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar ámbito legal');
+                        return;
+                    }
+                } else if (typeToDelete === "bienes") {
+                    const result = await deleteBien(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar bien');
                         return;
                     }
                 }
@@ -661,6 +693,33 @@ export default function Administration({ currentUser }: { currentUser: any }) {
         },
     ];
 
+    const BienesColumns: Column<any>[] = [
+        { header: "ID", accessorKey: "id", className: "font-bold px-2 py-2 text-sm" },
+        { header: "Descripción", accessorKey: "descripcion", className: "font-semibold px-2 py-2 text-sm" },
+        {
+            header: "Acción",
+            render: (row) => (
+                <div className="flex gap-2 justify-center">
+                    <button
+                        onClick={() => handleEdit(row, "bienes")}
+                        className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
+                        title="Editar"
+                    >
+                        <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
+                    </button>
+                    <button
+                        onClick={() => handleDelete(row, "bienes")}
+                        className="w-10 h-10 flex justify-center items-center hover:bg-red-100 rounded-lg transition-colors group cursor-pointer"
+                        title="Eliminar"
+                    >
+                        <span className="icon-[mdi--trash-can-outline] text-3xl text-red-600 group-hover:scale-110 transition-transform"></span>
+                    </button>
+                </div>
+            ),
+            className: "text-gray-400 font-semibold text-sm pl-2 py-2",
+        },
+    ];
+
     // Función para filtrar datos según el tipo de tabla
     const filterData = (data: any[], tab: string) => {
         let filtered = [...data];
@@ -756,6 +815,16 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     );
                 }
                 break;
+            case "bienes":
+                // Filtro por búsqueda de texto (descripcion)
+                if (searchTerm.trim()) {
+                    const searchLower = searchTerm.toLowerCase().trim();
+                    filtered = filtered.filter((item) =>
+                        searchInField(item.id, searchLower) ||
+                        searchInField(item.descripcion, searchLower)
+                    );
+                }
+                break;
         }
 
         return filtered;
@@ -779,6 +848,10 @@ export default function Administration({ currentUser }: { currentUser: any }) {
             case "semestres":
                 rawData = semestres;
                 columns = SemestresColumns;
+                break;
+            case "bienes":
+                rawData = assets;
+                columns = BienesColumns;
                 break;
             default:
                 rawData = users;
@@ -867,6 +940,16 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                             className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "semestres" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Semestres
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab("bienes");
+                                setSelectedItems([]);
+                                setSearchTerm("");
+                            }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "bienes" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                        >
+                            Bienes
                         </button>
                         <button
                             onClick={() => {

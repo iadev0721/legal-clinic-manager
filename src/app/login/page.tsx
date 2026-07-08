@@ -54,10 +54,10 @@ export default function Login() {
                 />
                 <div className="self-stretch px-[3%] py-[2%] bg-neutral-50 rounded-[20px] shadow-[0px_5px_24.600000381469727px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-5">
 
-                    <form action={formAction} className="self-stretch flex flex-col gap-5">
+                    <form data-testid="login-form" action={formAction} className="self-stretch flex flex-col gap-5">
 
                         {/* Hidden Input para mandar la cédula completa */}
-                        <input type="hidden" name="cedula" value={fullCedula} />
+                        <input data-testid="login-cedula" type="hidden" name="cedula" value={fullCedula} />
 
                         <LabeledInput label="Cedula de Identidad:" className="self-stretch">
                             <InputContainer className="px-[0.8%] py-[0.3%] flex items-center gap-2">
@@ -103,6 +103,7 @@ export default function Login() {
                                 <div className="flex justify-start items-center gap-2 w-full">
                                     <span className="icon-[uil--lock] text-2xl text-sky-950"></span>
                                     <input
+                                        data-testid="login-password"
                                         type={showPassword ? "text" : "password"}
                                         name="password"
                                         placeholder="••••••••••••••••••"
@@ -125,13 +126,14 @@ export default function Login() {
                         </LabeledInput>
 
                         {state.error && (
-                            <div className="p-3 bg-red-100 text-red-700 rounded-lg text-center text-sm font-semibold">
+                            <div data-testid="login-error" className="p-3 bg-red-100 text-red-700 rounded-lg text-center text-sm font-semibold">
                                 {state.error}
                             </div>
                         )}
 
                         <div className="self-stretch pt-[1%] flex flex-col justify-start items-center gap-2">
                             <button
+                                data-testid="login-submit"
                                 type="submit"
                                 disabled={isPending}
                                 className={`self-stretch py-[1%] rounded-2xl inline-flex justify-center items-center gap-2.5 transition-colors duration-300 ${!isPending ? "bg-[#0A233C] hover:bg-[#0A233C]/90 cursor-pointer" : "bg-gray-400 cursor-not-allowed"}`}

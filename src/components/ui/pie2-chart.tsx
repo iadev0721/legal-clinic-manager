@@ -43,6 +43,9 @@ export function Pie2Chart({ data, config, dataKey, nameKey, title, innerRadius =
         }))
     }, [data])
 
+    // Check if data is empty or has no values
+    const hasData = processedData.length > 0 && processedData.some((item) => item[dataKey] > 0)
+
     return (
         <Card className="flex flex-col border-none shadow-none bg-transparent">
             {title && (
@@ -51,43 +54,52 @@ export function Pie2Chart({ data, config, dataKey, nameKey, title, innerRadius =
                 </CardHeader>
             )}
             <CardContent className="flex-1 pb-0 pt-0">
-                <ChartContainer
-                    config={config}
-                    className="[&_.recharts-pie-label-text]:fill-foreground mx-auto aspect-square max-h-[250px] pb-0"
-                >
-                    <RechartsPieChart>
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent hideLabel />}
-                        />
-                        <Pie
-                            data={processedData}
-                            dataKey={dataKey}
-                            nameKey={nameKey}
-                            innerRadius={innerRadius}
-                            strokeWidth={2}
-                            label
-                            isAnimationActive={!disableAnimation}
-                        />
-                    </RechartsPieChart>
-                </ChartContainer>
-            </CardContent>
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 mb-2 max-w-[240px] mx-auto">
-                {processedData.map((entry, index) => {
-                    const key = entry[nameKey] as string
-                    return (
-                        <div key={index} className="flex items-center gap-2">
-                            <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: entry.fill }}
+                {!hasData ? (
+                    <div className="text-center py-16 bg-neutral-50 rounded-xl border border-dashed border-neutral-200 mx-auto aspect-square max-h-[250px] flex flex-col items-center justify-center">
+                        <span className="icon-[mdi--chart-pie] text-6xl text-neutral-300 mb-3"></span>
+                        <p className="text-sky-950/40 text-sm font-medium">No hay datos disponibles.</p>
+                    </div>
+                ) : (
+                    <ChartContainer
+                        config={config}
+                        className="[&_.recharts-pie-label-text]:fill-foreground mx-auto aspect-square max-h-[250px] pb-0"
+                    >
+                        <RechartsPieChart>
+                            <ChartTooltip
+                                cursor={false}
+                                content={<ChartTooltipContent hideLabel />}
                             />
-                            <span className="text-sky-950 font-medium text-sm capitalize">
-                                {config[key]?.label || entry[nameKey]}
-                            </span>
-                        </div>
-                    )
-                })}
-            </div>
+                            <Pie
+                                data={processedData}
+                                dataKey={dataKey}
+                                nameKey={nameKey}
+                                innerRadius={innerRadius}
+                                strokeWidth={2}
+                                label
+                                isAnimationActive={!disableAnimation}
+                            />
+                        </RechartsPieChart>
+                    </ChartContainer>
+                )}
+            </CardContent>
+            {hasData && (
+                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 mb-2 max-w-[240px] mx-auto">
+                    {processedData.map((entry, index) => {
+                        const key = entry[nameKey] as string
+                        return (
+                            <div key={index} className="flex items-center gap-2">
+                                <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: entry.fill }}
+                                />
+                                <span className="text-sky-950 font-medium text-sm capitalize">
+                                    {config[key]?.label || entry[nameKey]}
+                                </span>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
         </Card>
     )
 }

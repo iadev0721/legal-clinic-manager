@@ -42,8 +42,8 @@ function ReportContent() {
     const { data, loading } = useStatisticsData(filters);
 
     const pageStyle = {
-        width: "270mm",
-        height: "270mm",
+        width: "210mm",
+        minHeight: "297mm",
         padding: "15mm",
         backgroundColor: "white",
         margin: "0 auto",
@@ -64,7 +64,7 @@ function ReportContent() {
                 <header className="text-center mb-6">
                     <h1 className="text-3xl font-bold text-sky-950">Métricas de Casos y Crecimiento</h1>
                     <p className="text-gray-500">Reporte Socio-Cultural - Página 1</p>
-                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-2">
                     <div className="p-5 col-span-2">
@@ -106,7 +106,7 @@ function ReportContent() {
                 <header className="text-center mb-6">
                     <h1 className="text-3xl font-bold text-sky-950">Datos Socio-Económicos I</h1>
                     <p className="text-gray-500">Reporte Socio-Cultural - Página 2</p>
-                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
@@ -150,7 +150,7 @@ function ReportContent() {
                 <header className="text-center mb-6">
                     <h1 className="text-3xl font-bold text-sky-950">Datos Socio-Económicos II</h1>
                     <p className="text-gray-500">Reporte Socio-Cultural - Página 3</p>
-                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart

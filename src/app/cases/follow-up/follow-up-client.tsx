@@ -72,14 +72,23 @@ function EditActionDialog({ open, onClose, action, onSave }: EditActionDialogPro
             const probMatch = desc.match(/Problema:\s*([\s\S]*?)(?=\n\nOrientación:|$)/);
             const orientMatch = desc.match(/Orientación:\s*([\s\S]*?)$/);
 
-            if (probMatch || orientMatch) {
-                setProblem(probMatch ? probMatch[1].trim() : "");
-                setOrientation(orientMatch ? orientMatch[1].trim() : "");
+            if (action.type) {
+                setProblem(action.type);
+            }
+            if (orientMatch) {
+                setOrientation(orientMatch[1].trim());
+            } else if (probMatch) {
+                // If old format but only Problem, maybe put it in Description if Title is empty?
+                // But we set Title from action.type.
+                // So if no Orientation, Description is empty?
+                // Let's assume description is the *entire* text if not formatted.
+                if (!action.description.includes('Problema:') && !action.description.includes('Orientación:')) {
+                    setOrientation(action.description);
+                } else {
+                    setOrientation("");
+                }
             } else {
-                // If not structured, put everything in Problem for now or split logically? 
-                // Let's put it in Problem to avoid data loss
-                setProblem(desc);
-                setOrientation("");
+                setOrientation(action.description);
             }
 
             // check if dateObj is valid
@@ -104,11 +113,11 @@ function EditActionDialog({ open, onClose, action, onSave }: EditActionDialogPro
 
         try {
             // Reconstruct description
-            const titulo = problem.trim().substring(0, 50) || 'Acción actualizada'; // Simple title derived
-            const observacion = [
-                problem.trim() && `Problema: ${problem.trim()}`,
-                orientation.trim() && `Orientación: ${orientation.trim()}`
-            ].filter(Boolean).join('\n\n');
+            const titulo = problem.trim().substring(0, 50) || 'Acción actualizada';
+            // Save ONLY the description content in observacion, without prefixes if possible, or keep format for backward compat?
+            // User requested "solo deja la descripcion". This implies display mainly.
+            // But for consistency let's save cleanly:
+            const observacion = orientation.trim();
 
             await onSave({
                 titulo_accion: titulo,
@@ -145,7 +154,7 @@ function EditActionDialog({ open, onClose, action, onSave }: EditActionDialogPro
                         />
                     </div>
                     <div>
-                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Síntesis del Problema</label>
+                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Título de la Acción</label>
                         <textarea
                             className="w-full px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-200 text-sky-950 text-sm focus:outline-none focus:border-[#3E7DBB] h-24 resize-none placeholder:text-sky-950/30"
                             value={problem}
@@ -154,7 +163,7 @@ function EditActionDialog({ open, onClose, action, onSave }: EditActionDialogPro
                         />
                     </div>
                     <div>
-                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Orientación dada</label>
+                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Descripción de la Acción</label>
                         <textarea
                             className="w-full px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-200 text-sky-950 text-sm focus:outline-none focus:border-[#3E7DBB] h-24 resize-none placeholder:text-sky-950/30"
                             value={orientation}
@@ -323,21 +332,28 @@ function ActionHistoryModal({ open, onClose, data, onEdit, onDelete }: ActionHis
             accessorKey: "description",
             render: (item) => (
                 <div className="text-base text-sky-950/80 leading-snug whitespace-pre-wrap">
-                    {item.description.split(/(\bProblema:|\bOrientación:|\bNuevo estatus:|\bMotivo:)/).map((part, i) => {
-                        if (["Problema:", "Orientación:", "Nuevo estatus:", "Motivo:"].includes(part)) {
-                            return <strong key={i} className="text-sky-950 font-black">{part}</strong>;
+                    {(() => {
+                        const desc = item.description;
+                        // Clean up description for display:
+                        let cleanDesc = desc;
+                        const orientMatch = desc.match(/Orientación:\s*([\s\S]*?)$/);
+                        if (orientMatch) {
+                            cleanDesc = orientMatch[1].trim();
+                        } else {
+                            if (desc.includes('Problema:')) {
+                                cleanDesc = desc.replace(/Problema:\s*[\s\S]*?(?=\n|$)/, '').trim();
+                            }
                         }
-                        return (
-                            <span key={i}>
-                                {part.split(/(\s+)/).map((subPart, j) => {
-                                    if (!/\s/.test(subPart) && subPart.length > 20) {
-                                        return subPart.match(/.{1,20}/g)?.join('\u200B') || subPart;
-                                    }
-                                    return subPart;
-                                }).join('')}
-                            </span>
-                        );
-                    })}
+                        const textToDisplay = cleanDesc || item.description;
+
+                        // Bold specific phrases logic
+                        return textToDisplay.split(/(\bNuevo estatus:|\bMotivo:|\bCaso creado con estatus:)/).map((part: string, i: number) => {
+                            if (["Nuevo estatus:", "Motivo:", "Caso creado con estatus:"].includes(part)) {
+                                return <strong key={i} className="text-sky-950 font-black">{part}</strong>;
+                            }
+                            return part;
+                        });
+                    })()}
                 </div>
             ),
         },
@@ -564,12 +580,9 @@ export default function FollowUpClient({ user }: { user: any }) {
         setActionSuccess(false);
 
         try {
-            // Combinar problema y orientación en el formato esperado
+            // Save cleanly: Title separate from Description
             const titulo = newActionProblem.trim().substring(0, 50) || 'Acción registrada';
-            const observacion = [
-                newActionProblem.trim() && `Problema: ${newActionProblem.trim()}`,
-                newActionOrientation.trim() && `Orientación: ${newActionOrientation.trim()}`
-            ].filter(Boolean).join('\n\n');
+            const observacion = newActionOrientation.trim();
 
             const result = await createAccion({
                 nro_caso: selectedCaseId,
@@ -975,8 +988,9 @@ export default function FollowUpClient({ user }: { user: any }) {
                                             />
                                         </div>
                                         <div>
+                                            <label className="block text-sky-950 font-semibold mb-2 text-sm">Título de la Acción</label>
                                             <textarea
-                                                placeholder="Síntesis del problema..."
+                                                placeholder="Ej: Entrevista inicial, Revisión de documentos..."
                                                 value={newActionProblem}
                                                 onChange={(e) => setNewActionProblem(e.target.value)}
                                                 disabled={isSavingAction}
@@ -984,8 +998,9 @@ export default function FollowUpClient({ user }: { user: any }) {
                                             />
                                         </div>
                                         <div>
+                                            <label className="block text-sky-950 font-semibold mb-2 text-sm">Descripción de la Acción</label>
                                             <textarea
-                                                placeholder="Orientación dada por el alumno..."
+                                                placeholder="Ej: Se atendió al usuario y se le solicitaron los recaudos necesarios..."
                                                 value={newActionOrientation}
                                                 onChange={(e) => setNewActionOrientation(e.target.value)}
                                                 disabled={isSavingAction}
@@ -1100,21 +1115,26 @@ export default function FollowUpClient({ user }: { user: any }) {
                                                                 </div>
                                                             </div>
                                                             <p className="text-sky-950/80 text-sm leading-relaxed whitespace-pre-wrap">
-                                                                {action.description.split(/(\bProblema:|\bOrientación:|\bNuevo estatus:|\bMotivo:)/).map((part: string, i: number) => {
-                                                                    if (["Problema:", "Orientación:", "Nuevo estatus:", "Motivo:"].includes(part)) {
-                                                                        return <strong key={i} className="text-sky-950 font-black">{part}</strong>;
+                                                                {(() => {
+                                                                    const desc = action.description;
+                                                                    // Same cleaning logic 
+                                                                    let cleanDesc = desc;
+                                                                    const orientMatch = desc.match(/Orientación:\s*([\s\S]*?)$/);
+                                                                    if (orientMatch) {
+                                                                        cleanDesc = orientMatch[1].trim();
+                                                                    } else if (desc.includes('Problema:')) {
+                                                                        cleanDesc = desc.replace(/Problema:\s*[\s\S]*?(?=\n|$)/, '').trim();
                                                                     }
-                                                                    return (
-                                                                        <span key={i}>
-                                                                            {part.split(/(\s+)/).map((subPart: string) => {
-                                                                                if (!/\s/.test(subPart) && subPart.length > 20) {
-                                                                                    return subPart.match(/.{1,20}/g)?.join('\u200B') || subPart;
-                                                                                }
-                                                                                return subPart;
-                                                                            }).join('')}
-                                                                        </span>
-                                                                    );
-                                                                })}
+                                                                    const textToDisplay = cleanDesc || action.description;
+
+                                                                    // Bold specific phrases logic
+                                                                    return textToDisplay.split(/(\bNuevo estatus:|\bMotivo:|\bCaso creado con estatus:)/).map((part: string, i: number) => {
+                                                                        if (["Nuevo estatus:", "Motivo:", "Caso creado con estatus:"].includes(part)) {
+                                                                            return <strong key={i} className="text-sky-950 font-black">{part}</strong>;
+                                                                        }
+                                                                        return part;
+                                                                    });
+                                                                })()}
                                                             </p>
                                                         </div>
                                                     </div>
