@@ -1068,13 +1068,13 @@ export default function CaseEditModal({
 
 
 
-            {
-              submitError && (
-                <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4">
-                  <p className="text-red-800 font-semibold">{submitError}</p>
-                </div>
-              )
-            }
+            {submitErrors.length > 0 && (
+              <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4">
+                {submitErrors.map((err, i) => (
+                  <p key={i} className="text-red-800 font-semibold">{err}</p>
+                ))}
+              </div>
+            )}
 
             <DialogFooter className="flex justify-between items-center gap-2 pt-4 w-full">
               <div className="flex-1">
