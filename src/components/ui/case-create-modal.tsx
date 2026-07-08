@@ -601,7 +601,7 @@ export default function CaseCreateModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent data-testid="case-create-dialog" className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sky-950 text-3xl font-semibold flex items-center gap-3">
             <span className="icon-[mdi--plus-circle] text-4xl text-green-600"></span>
@@ -620,6 +620,7 @@ export default function CaseCreateModal({
               Solicitante <span className="text-red-500">*</span>
             </Label>
             <SolicitanteSearchSelect
+              data-testid="case-solicitante-search"
               placeholder="Buscar por cédula o nombre..."
               value={cedulaSolicitante}
               onChange={setCedulaSolicitante}
@@ -680,6 +681,7 @@ export default function CaseCreateModal({
               Síntesis del Caso <span className="text-red-500">*</span>
             </Label>
             <Textarea
+              data-testid="case-sintesis"
               id="sintesis"
               value={sintesis}
               onChange={(e) => setSintesis(e.target.value)}
@@ -1191,6 +1193,7 @@ export default function CaseCreateModal({
               Cancelar
             </button>
             <PrimaryButton
+              data-testid="case-save"
               type="submit"
               icon="icon-[mdi--content-save]"
               disabled={loading}

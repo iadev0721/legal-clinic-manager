@@ -139,6 +139,7 @@ export default function Sidebar({ user }: SidebarProps) {
 
                     {/* Logout Button */}
                     <button
+                        data-testid="sidebar-logout"
                         onClick={async () => {
                             await logout();
                         }}

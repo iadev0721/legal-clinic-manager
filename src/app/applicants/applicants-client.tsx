@@ -366,6 +366,7 @@ export default function ApplicantsClient({ userRole }: ApplicantsClientProps) {
             </p>
           </div>
           <PrimaryButton
+            data-testid="new-applicant-btn"
             onClick={handleNewApplicant}
             icon="icon-[mdi--account-plus]"
           >

@@ -467,7 +467,7 @@ export default function ApplicantModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent data-testid="applicant-dialog" className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-sky-950 text-3xl font-semibold">
             {mode === "create" ? "Nuevo Solicitante" : "Editar Solicitante"}
@@ -1406,6 +1406,7 @@ export default function ApplicantModal({
                 Cancelar
               </button>
               <PrimaryButton
+                data-testid="save-applicant"
                 type="submit"
                 form="applicant-form"
                 icon={
